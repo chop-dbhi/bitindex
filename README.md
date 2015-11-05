@@ -1,5 +1,7 @@
 # bitindex
 
+[![Build Status](https://travis-ci.org/chop-dbhi/bitindex.svg?branch=master)](https://travis-ci.org/chop-dbhi/bitindex) [![GoDoc](https://godoc.org/github.com/chop-dbhi/bitindex?status.svg)](https://godoc.org/github.com/chop-dbhi/bitindex)
+
 A small library for building and operating on bit indexes. A *bit index* of composed of a **domain**  and a **table**. A domain maps a set of `uint32` members to bit positions. The table contains a set of sparse bit arrays for each key in the index.
 
 For example, given a set of fruit choices (called the domain):
