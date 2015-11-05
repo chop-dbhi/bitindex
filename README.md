@@ -19,8 +19,8 @@ and a set of people (referred to as keys) with the fruit they enjoy (referred to
 
 The resulting matrix would look like this:
 
-Apples|Cherries|Peaches|Grapes
-------|--------|-------|------
+ |Apples|Cherries|Peaches|Grapes
+----|------|--------|-------|------
 Bob|1|0|1|0
 Sue|0|0|0|1
 Joe|0|1|1|1
@@ -42,6 +42,14 @@ Applying these operations to the example:
 ## Install
 
 Download a release from the [releases page](https://github.com/chop-dbhi/bitindex/releases) for your architecture.
+
+### Source
+
+Clone the repository and run the following to install `bitindex` in your `$GOPATH/bin` directory.
+
+```
+make install build
+```
 
 ## Usage
 
@@ -113,14 +121,14 @@ bitindex query --all=1,3
 100
 ```
 
-Not Peaches nor Apples
+Not (Peaches or Apples)
 
 ```
 bitindex query --nany=3,1
 101
 ```
 
-Not Grapes and not Cherries
+Not (Grapes and Cherries)
 
 ```
 bitindex query --nall=4,2
