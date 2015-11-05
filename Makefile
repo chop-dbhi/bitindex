@@ -21,6 +21,6 @@ install:
 	go get github.com/blang/semver
 
 test:
-	go test -cover ./...
+	go test -v -cover -bench . -benchmem .
 
 .PHONY: dist test
