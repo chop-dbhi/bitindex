@@ -74,20 +74,20 @@ An index requires use of unsigned 32-bit integers, so we can use the IDs to enco
 
 ```sh
 cat << EOF > fruit.csv
-fruit,person
-1,100
-3,100
-4,101
-4,102
-2,102
-3,102
+person,fruit
+100,1
+100,3
+101,4
+102,4
+102,2
+102,3
 EOF
 ```
 
-To build the index, use the `build` command. Since we included a CSV header, we add the flag to denote that. The index is written to stdout by default, but we included the `--output` option to specify a filename. To denote which column is the domain and which is the set key, we add the corresponding flags with the column index.
+To build the index, use the `build` command. Since we included a CSV header, we add the flag to denote that. The index is written to stdout by default, but we included the `--output` option to specify a filename.
 
 ```
-bitindex build --format=csv --csv-header --csv-domain=0 --csv-key=1 --output=fruit.bitx fruit.csv
+bitindex build --format=csv --csv-header --output=fruit.bitx fruit.csv
 ```
 
 This will output the following 
@@ -109,7 +109,7 @@ As noted above, the four operations that are supported are `any`, `all`, `nany`,
 Apples or Cherries
 
 ```
-bitindex query --any=1,2
+bitindex query --any=1,2 fruit.bitx
 100
 102
 ```
@@ -117,21 +117,21 @@ bitindex query --any=1,2
 Apples and Peaches
 
 ```
-bitindex query --all=1,3
+bitindex query --all=1,3 fruit.bitx
 100
 ```
 
 Not (Peaches or Apples)
 
 ```
-bitindex query --nany=3,1
+bitindex query --nany=3,1 fruit.bitx
 101
 ```
 
 Not (Grapes and Cherries)
 
 ```
-bitindex query --nall=4,2
+bitindex query --nall=4,2 fruit.bitx
 100
 101
 ```
