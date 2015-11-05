@@ -49,14 +49,14 @@ Download a release from the [releases page](https://github.com/chop-dbhi/bitinde
 To build an index, the input stream must be in one of the supported [formats](#formats). For this example, we will use a CSV format and assuming the fruit and people have the following IDs.
 
 ID|Fruit
---|-----
+----|-----
 1|Apples
 2|Cherries
 3|Peaches
 4|Grapes
 
 ID|Person
---|------
+----|------
 100|Bob
 101|Sue
 102|Joe
