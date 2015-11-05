@@ -15,14 +15,13 @@ and a set of people (referred to as keys) with the fruit they enjoy (referred to
 - Sue: [Grapes]
 - Joe: [Grapes, Cherries, Peaches]
 
-The resulting index would look like this:
+The resulting matrix would look like this:
 
-```
-        Apples  Cherries    Peaches Grapes
-Bob     1       0           1       0
-Sue     0       0           0       1
-Joe     0       1           1       1
-```
+Apples|Cherries|Peaches|Grapes
+------|--------|-------|------
+Bob|1|0|1|0
+Sue|0|0|0|1
+Joe|0|1|1|1
 
 Once the index is built, lookup operations can be performed to find the items that match certain criteria:
 
