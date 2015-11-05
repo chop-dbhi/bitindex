@@ -1,9 +1,10 @@
-PROG_NAME := "bitindex"
+PROG_NAME := bitindex
 GIT_VERSION := $(shell git log -1 --pretty=format:"%h (%ci)" .)
 
 build:
 	go build -ldflags "-X \"main.buildVersion=$(GIT_VERSION)\"" \
-		-o $(GOPATH)/bin/$(PROG_NAME)
+		-o "$(GOPATH)/bin/$(PROG_NAME)" \
+		./cmd/bitindex
 
 dist:
 	mkdir -p dist
@@ -12,6 +13,7 @@ dist:
 		-os "darwin linux windows" \
 		-arch "amd64" \
 		-output="./dist/$(PROG_NAME)-{{.OS}}-{{.Arch}}" \
+		./cmd/bitindex
 
 install:
 	go get github.com/mitchellh/gox
