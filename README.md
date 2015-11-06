@@ -47,8 +47,8 @@ Download a release from the [releases page](https://github.com/chop-dbhi/bitinde
 
 Clone the repository and run the following to install `bitindex` in your `$GOPATH/bin` directory.
 
-```
-make install build
+```sh
+$ make install build
 ```
 
 ## Usage
@@ -73,7 +73,7 @@ ID|Person
 An index requires use of unsigned 32-bit integers, so we can use the IDs to encoded the labels.
 
 ```sh
-cat << EOF > fruit.csv
+$ cat << EOF > fruit.csv
 person,fruit
 100,1
 100,3
@@ -86,13 +86,13 @@ EOF
 
 To build the index, use the `build` command. Since we included a CSV header, we add the flag to denote that. The index is written to stdout by default, but we included the `--output` option to specify a filename.
 
-```
-bitindex build --format=csv --csv-header --output=fruit.bitx fruit.csv
+```sh
+$ bitindex build --format=csv --csv-header --output=fruit.bitx fruit.csv
 ```
 
 This will output the following 
 
-```
+```sh
 Build time: 22.684µs
 Statistics
 * Domain size: 4
@@ -102,38 +102,72 @@ Statistics
 
 The domain size is equal to the number of fruit and the table size is the number of people.
 
-### Query the index
+## Interfaces
+
+### Command Line
 
 As noted above, the four operations that are supported are `any`, `all`, `nany`, and `nall`. Any or all of these flags can be passed with a comma-separated list of fruit IDs. Below query the index for the questions asked above.
 
 Apples or Cherries
 
-```
-bitindex query --any=1,2 fruit.bitx
+```sh
+$ bitindex query --any=1,2 fruit.bitx
 100
 102
 ```
 
 Apples and Peaches
 
-```
-bitindex query --all=1,3 fruit.bitx
+```sh
+$ bitindex query --all=1,3 fruit.bitx
 100
 ```
 
 Not (Peaches or Apples)
 
-```
-bitindex query --nany=3,1 fruit.bitx
+```sh
+$ bitindex query --nany=3,1 fruit.bitx
 101
 ```
 
 Not (Grapes and Cherries)
 
-```
-bitindex query --nall=4,2 fruit.bitx
+```sh
+$ bitindex query --nall=4,2 fruit.bitx
 100
 101
+```
+
+### HTTP
+
+To use the index in a real environment, the bitindex server would be started and RPC requests could be use to query the index.
+
+Start the server by using the `serve` command.
+
+```sh
+$ bitindex serve fruit.bitx
+Listening on 127.0.0.0:7000...
+```
+
+Domain
+
+```sh
+curl 127.0.0.1:7000/domain
+[1, 2, 3, 4]
+```
+
+Keys
+
+```sh
+curl 127.0.0.1:7000/keys
+[100, 101, 102]
+```
+
+Query
+
+```sh
+curl -X POST 127.0.0.0:7000/query -d '{"any": [1, 2]}'
+[100, 102]
 ```
 
 ## Formats

@@ -1,12 +1,17 @@
 package bitindex
 
 import (
-	"bytes"
-	"compress/gzip"
 	"encoding/binary"
 	"fmt"
 	"io"
 )
+
+// Resets the buffer
+func clearBuffer(s []byte) {
+	for i, _ := range s {
+		s[i] = 0x0
+	}
+}
 
 func writeInt(w io.Writer, b []byte, i int) error {
 	binary.PutUvarint(b, uint64(i))
@@ -14,7 +19,7 @@ func writeInt(w io.Writer, b []byte, i int) error {
 	if n, err := w.Write(b[:4]); err != nil {
 		return err
 	} else if n != 4 {
-		panic("expected to write 4 bytes")
+		return fmt.Errorf("Expected to write 4 bytes, wrote %d", n)
 	}
 
 	return nil
@@ -26,110 +31,116 @@ func writeUint32(w io.Writer, b []byte, i uint32) error {
 	if n, err := w.Write(b[:4]); err != nil {
 		return err
 	} else if n != 4 {
-		panic("expected to write 4 bytes")
+		return fmt.Errorf("Expected to write 4 bytes, wrote %d", n)
 	}
 
 	return nil
 }
 
-func dump(w io.Writer, idx *Index) error {
-	var (
-		err error
-		n   int
-		un  uint32
-
-		// All parts fit into 4 bytes.
-		byts = make([]byte, 4, 4)
-
-		buf = bytes.NewBuffer(byts)
-	)
-
+func dumpDomain(w io.Writer, d *Domain, b []byte) error {
 	// Length of the domain. 4 bytes.
-	n = idx.Domain.Size()
-
-	if err := writeInt(w, byts, n); err != nil {
+	if err := writeInt(w, b, d.Size()); err != nil {
 		return fmt.Errorf("Error writing domain length: %s", err)
 	}
 
-	// Domain members. 4 bytes.
-	for _, un = range idx.Domain.r {
-		buf.Reset()
+	// Domain members. 4 bytes each.
+	for _, n := range d.Members() {
+		clearBuffer(b)
 
-		if err = writeUint32(w, byts, un); err != nil {
+		if err := writeUint32(w, b, n); err != nil {
 			return fmt.Errorf("Error writing domain member: %s", err)
 		}
 	}
 
-	buf.Reset()
+	return nil
+}
 
-	// Length of the table. 4 bytes.
-	n = idx.Table.Size()
+func dumpArray(w io.Writer, a Array, b []byte) error {
+	clearBuffer(b)
 
-	if err := writeInt(w, byts, n); err != nil {
-		return fmt.Errorf("Error writing table length: %s", err)
+	// Array length. 4 bytes.
+	if err := writeInt(w, b, len(a)); err != nil {
+		return fmt.Errorf("Error writing array length: %s", err)
 	}
 
-	var (
-		a Array
-		p uint32
-		b byte
-	)
+	// Encode array items (which is a map).
+	for p, y := range a {
+		clearBuffer(b)
 
-	// Encode table entries.
-	for un, a = range idx.Table {
-		buf.Reset()
-
-		// Entry key. 4 bytes.
-		if err = writeUint32(w, byts, un); err != nil {
-			return fmt.Errorf("Error writing array key: %s", err)
+		// Byte position.
+		if err := writeUint32(w, b, p); err != nil {
+			return fmt.Errorf("Error writing byte position: %s", err)
 		}
 
-		buf.Reset()
+		b[0] = y
 
-		// Array length. 4 bytes.
-		if err = writeInt(w, byts, len(a)); err != nil {
-			return fmt.Errorf("Error writing array length: %s", err)
-		}
-
-		// Encode array items.
-		for p, b = range a {
-			buf.Reset()
-
-			// Byte position.
-			if err = writeUint32(w, byts, p); err != nil {
-				return fmt.Errorf("Error writing byte position: %s", err)
-			}
-
-			byts[0] = b
-
-			if _, err = w.Write(byts[:1]); err != nil {
-				return fmt.Errorf("Error writing byte: %s", err)
-			}
+		if n, err := w.Write(b[:1]); err != nil {
+			return fmt.Errorf("Error writing byte: %s", err)
+		} else if n != 1 {
+			return fmt.Errorf("Expected to write 1 byte, wrote %d", n)
 		}
 	}
 
 	return nil
 }
 
-// Dump writes an Index to it binary representation.
-func Dump(w io.Writer, idx *Index) error {
-	gw := gzip.NewWriter(w)
+func dumpTable(w io.Writer, t Table, b []byte) error {
+	clearBuffer(b)
 
-	if err := dump(gw, idx); err != nil {
+	// Length of the table. 4 bytes.
+	if err := writeInt(w, b, t.Size()); err != nil {
+		return fmt.Errorf("Error writing table length: %s", err)
+	}
+
+	// Encode table entries.
+	for k, a := range t {
+		clearBuffer(b)
+
+		// Entry key. 4 bytes.
+		if err := writeUint32(w, b, k); err != nil {
+			return fmt.Errorf("Error writing array key: %s", err)
+		}
+
+		if err := dumpArray(w, a, b); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func dumpIndex(w io.Writer, idx *Index) error {
+	// Shared buffer. Nothing exceeds 4 bytes.
+	b := make([]byte, 4, 4)
+
+	if err := dumpDomain(w, idx.Domain, b); err != nil {
 		return err
 	}
 
-	gw.Flush()
-	gw.Close()
+	if err := dumpTable(w, idx.Table, b); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// DumpIndex writes an Index to it binary representation.
+func DumpIndex(w io.Writer, idx *Index) error {
+	if err := dumpIndex(w, idx); err != nil {
+		return err
+	}
 
 	return nil
 }
 
 func readUint32(r io.Reader, b []byte) (uint32, error) {
+	if len(b) != 4 {
+		panic("need 4 bytes")
+	}
 	if n, err := r.Read(b[:4]); err != nil {
 		return 0, err
 	} else if n != 4 {
-		panic("expected 4 bytes to be read")
+		return 0, fmt.Errorf("Expected to read 4 bytes; read %d", n)
 	}
 
 	val, ierr := binary.Uvarint(b)
@@ -145,7 +156,7 @@ func readInt(r io.Reader, b []byte) (int, error) {
 	if n, err := r.Read(b[:4]); err != nil {
 		return 0, err
 	} else if n != 4 {
-		panic("expected 4 bytes to be read")
+		return 0, fmt.Errorf("Expected to read 4 bytes; read %d", n)
 	}
 
 	val, ierr := binary.Uvarint(b)
@@ -161,102 +172,146 @@ func readByte(r io.Reader, b []byte) (byte, error) {
 	if n, err := r.Read(b[:1]); err != nil {
 		return 0, err
 	} else if n != 1 {
-		panic("expected 1 byte to be read")
+		return 0, fmt.Errorf("Expected to read 1 byte; read %d", n)
 	}
 
 	return b[0], nil
 }
 
-func load(r io.Reader, idx *Index) error {
+func readArray(r io.Reader, n int, b []byte) (Array, error) {
+	a := make(Array, n)
+
+	var (
+		pos uint32
+		bb  byte
+		err error
+	)
+
+	for i := 0; i < n; i++ {
+		// Read byte position.
+		if pos, err = readUint32(r, b); err != nil {
+			return nil, fmt.Errorf("Error reading byte position at %d: %s", i, err)
+		}
+
+		// Byte entry.
+		if bb, err = readByte(r, b); err != nil {
+			return nil, fmt.Errorf("Error reading byte at %d: %s", i, err)
+		}
+
+		a[pos] = bb
+	}
+
+	return a, nil
+}
+
+func readDomain(r io.Reader, b []byte) (*Domain, error) {
 	var (
 		n   int
-		un  uint32
+		m   uint32
 		err error
-
-		// All parts fit into 4 bytes.
-		byts = make([]byte, 4, 4)
 	)
 
 	// N members in the domain.
-	if n, err = readInt(r, byts); err != nil {
-		return fmt.Errorf("Error decoding domain length: %s", err)
+	if n, err = readInt(r, b); err != nil {
+		return nil, fmt.Errorf("Error decoding domain length: %s", err)
 	}
 
 	// Initialize array for members.
-	members := make([]uint32, n)
+	ms := make([]uint32, n)
 
 	// Domain members are encoded as an array of 4 bytes
 	for i := 0; i < n; i++ {
-		if un, err = readUint32(r, byts); err != nil {
-			return fmt.Errorf("Error decoding domain member: %s", err)
+		if m, err = readUint32(r, b); err != nil {
+			return nil, fmt.Errorf("Error decoding domain member at %d: %s", i, err)
 		}
 
-		members[i] = un
+		ms[i] = m
 	}
 
 	// Initialize and set the domain.
-	idx.Domain = NewDomain(members)
+	return NewDomain(ms), nil
+}
+
+func readTable(r io.Reader, b []byte) (Table, error) {
+	var (
+		n   int
+		err error
+	)
 
 	// N entries in the table.
-	if n, err = readInt(r, byts); err != nil {
-		return fmt.Errorf("Error decoding table length: %s", err)
+	if n, err = readInt(r, b); err != nil {
+		return nil, fmt.Errorf("Error decoding table length: %s", err)
 	}
 
+	t := make(Table, n)
+
 	var (
-		key, pos uint32
-		eb       byte
-		a        Array
-		m        int
+		l int
+		k uint32
+		a Array
 	)
 
 	// Decode all table entries.
 	for i := 0; i < n; i++ {
 		// Key for the entry.
-		if key, err = readUint32(r, byts); err != nil {
-			return fmt.Errorf("Error decoding array key: %s", err)
+		if k, err = readUint32(r, b); err != nil {
+			return nil, fmt.Errorf("Error decoding array key: %s", err)
 		}
 
 		// Decode array length.
-		if m, err = readInt(r, byts); err != nil {
-			return fmt.Errorf("Error decoding array length: %s", err)
+		if l, err = readInt(r, b); err != nil {
+			return nil, fmt.Errorf("Error decoding array length: %s", err)
 		}
 
-		// Initialize the array.
-		a = make(Array, m)
-
-		// Array items.
-		for i := 0; i < m; i++ {
-			if pos, err = readUint32(r, byts); err != nil {
-				return fmt.Errorf("Error reading byte position: %s", err)
-			}
-
-			// Byte entry.
-			if eb, err = readByte(r, byts); err != nil {
-				return fmt.Errorf("Error reading byte: %s", err)
-			}
-
-			a[pos] = eb
+		if a, err = readArray(r, l, b); err != nil {
+			return nil, err
 		}
 
 		// Add entry to table.
-		idx.Table[key] = a
+		t[k] = a
 	}
 
-	return nil
+	return t, nil
 }
 
-func Load(r io.Reader, idx *Index) error {
-	gr, err := gzip.NewReader(r)
+// LoadDomain loads only the domain from an io.Reader.
+func LoadDomain(r io.Reader) (*Domain, error) {
+	var (
+		d   *Domain
+		err error
+	)
 
-	if err != nil {
-		return err
+	b := make([]byte, 4, 4)
+
+	if d, err = readDomain(r, b); err != nil {
+		return nil, err
 	}
 
-	if err = load(gr, idx); err != nil {
-		return err
+	return d, nil
+}
+
+// LoadIndex loads the index from an io.Reader.
+func LoadIndex(r io.Reader) (*Index, error) {
+	var (
+		d   *Domain
+		t   Table
+		err error
+	)
+
+	b := make([]byte, 4, 4)
+
+	if d, err = readDomain(r, b); err != nil {
+		return nil, err
 	}
 
-	gr.Close()
+	if t, err = readTable(r, b); err != nil {
+		return nil, err
+	}
 
-	return nil
+	idx := &Index{
+		Domain: d,
+		Table:  t,
+	}
+
+	return idx, nil
 }

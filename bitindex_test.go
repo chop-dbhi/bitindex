@@ -7,10 +7,15 @@ import (
 
 var (
 	fruit = []uint32{
-		1, // Apples
-		2, // Cherries
-		3, // Peaches
-		4, // Grapes
+		1, // Apple
+		2, // Cherry
+		3, // Peach
+		4, // Grape
+		5, // Pear
+		6, // Pineapple
+		7, // Kiwi
+		8, // Watermelon
+		9, // Orange
 	}
 
 	people = []uint32{
@@ -19,26 +24,21 @@ var (
 		102, // Joe
 	}
 
-	pairs = [][2]uint32{
-		{100, 1},
-		{100, 3},
-		{101, 4},
-		{102, 4},
-		{102, 2},
-		{102, 3},
+	pairs = map[uint32][]uint32{
+		100: {1, 3},
+		101: {4, 9},
+		102: {4, 2, 3},
 	}
 )
 
 func TestDomain(t *testing.T) {
-	ms := []uint32{1, 3, 4, 10, 12, 49}
+	d := NewDomain(fruit)
 
-	d := NewDomain(ms)
-
-	if d.Size() != len(ms) {
-		t.Errorf("expected size %d, got %d", len(ms), d.Size())
+	if d.Size() != len(fruit) {
+		t.Errorf("expected size %d, got %d", len(fruit), d.Size())
 	}
 
-	for i, m := range ms {
+	for i, m := range fruit {
 		b := uint32(i)
 
 		if d.Bit(m) != b {
@@ -51,8 +51,8 @@ func TestDomain(t *testing.T) {
 	}
 
 	// Add a 6th bit.
-	if d.Add(101) != 6 {
-		t.Errorf("error adding 6th bit")
+	if d.Add(10) != 9 {
+		t.Errorf("error adding 9th bit")
 	}
 }
 
@@ -88,47 +88,37 @@ func TestArray(t *testing.T) {
 }
 
 func TestIndex(t *testing.T) {
-	ix := NewIndex(NewDomain(fruit))
+	ix := NewIndex(fruit)
 
-	for _, p := range pairs {
-		ix.Add(p[0], p[1])
+	for k, s := range pairs {
+		for _, b := range s {
+			ix.Add(k, b)
+		}
 	}
 
+	// The number of keys in the table.
 	if ix.Table.Size() != 3 {
 		t.Errorf("expected size 3, got %d", ix.Table.Size())
 	}
 
-	// Domain fits in one byte with three keys.
-	if ix.Table.Bytes() != 3 {
-		t.Errorf("expected bytes 3, got %d", ix.Table.Bytes())
+	// The bytes required to encode the table.
+	if ix.Table.Bytes() != 4 {
+		t.Errorf("expected bytes 4, got %d", ix.Table.Bytes())
 	}
 
-	// All required bytes are also allocated.
-	if ix.Sparsity() != 0 {
-		t.Errorf("expected sparsity 0, got %f", ix.Sparsity())
+	// Have of the bits are used.
+	if ix.Sparsity() == 1 {
+		t.Errorf("expected sparsity < 1, got %f", ix.Sparsity())
 	}
-
-}
-
-type uint32Array []uint32
-
-func (a uint32Array) Len() int {
-	return len(a)
-}
-
-func (a uint32Array) Swap(i, j int) {
-	a[i], a[j] = a[j], a[i]
-}
-
-func (a uint32Array) Less(i, j int) bool {
-	return a[i] < a[j]
 }
 
 func TestIndexOperations(t *testing.T) {
-	ix := NewIndex(NewDomain(fruit))
+	ix := NewIndex(fruit)
 
-	for _, p := range pairs {
-		ix.Add(p[0], p[1])
+	for k, s := range pairs {
+		for _, b := range s {
+			ix.Add(k, b)
+		}
 	}
 
 	o, err := ix.Any(1, 2)
@@ -137,7 +127,7 @@ func TestIndexOperations(t *testing.T) {
 		t.Error(err)
 	}
 
-	a := uint32Array(o)
+	a := Uint32Array(o)
 	sort.Sort(a)
 
 	if len(a) != 2 || a[0] != 100 || a[1] != 102 {
@@ -170,7 +160,7 @@ func TestIndexOperations(t *testing.T) {
 		t.Error(err)
 	}
 
-	a = uint32Array(o)
+	a = Uint32Array(o)
 	sort.Sort(a)
 
 	if len(a) != 2 || a[0] != 100 || a[1] != 101 {

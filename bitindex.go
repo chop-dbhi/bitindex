@@ -18,6 +18,11 @@ type Domain struct {
 	r []uint32
 }
 
+// Members returns the members in the domain.
+func (d *Domain) Members() []uint32 {
+	return d.r
+}
+
 // Add adds a member to the domain.
 func (d *Domain) Add(m uint32) uint32 {
 	// Do not add duplicates.
@@ -74,7 +79,6 @@ func (d *Domain) Mask(ms ...uint32) ([]uint32, error) {
 
 	for i, m := range ms {
 		if b, ok = d.f[m]; !ok {
-			fmt.Println(d.f, d.r)
 			return nil, fmt.Errorf("%d is not a member", m)
 		}
 
@@ -99,6 +103,10 @@ func NewDomain(ms []uint32) *Domain {
 		r: ms,
 	}
 }
+
+// Loc is the location of the bit in array consisting of the byte
+// position and the relative bit.
+type Loc [2]uint32
 
 // Array represents an array of bytes.
 type Array map[uint32]byte
@@ -156,6 +164,11 @@ func (a Array) Has(bit uint32) bool {
 	return false
 }
 
+// Loc returns the location of the bit in this array.
+func (a Array) Loc(bit uint32) Loc {
+	return Loc{bit / 8, bit % 8}
+}
+
 // Any returns true any of the bits set.
 func (a Array) Any(bits ...uint32) bool {
 	for _, bit := range bits {
@@ -208,6 +221,24 @@ func NewArray() Array {
 // Table is an map of keys to bit arrays.
 type Table map[uint32]Array
 
+// Keys returns all keys in the table.
+func (t Table) Keys() []uint32 {
+	a := make([]uint32, len(t))
+	i := 0
+
+	for k, _ := range t {
+		a[i] = k
+		i++
+	}
+
+	return a
+}
+
+// Get gets the bit array for the key.
+func (t Table) Get(k uint32) Array {
+	return t[k]
+}
+
 // Size returns the number of items in the table.
 func (t Table) Size() int {
 	return len(t)
@@ -247,6 +278,12 @@ func (ix *Index) Add(k uint32, m uint32) {
 	b := ix.Domain.Add(m)
 
 	ix.Table.Set(k, b)
+}
+
+// Has returns true if the key has the member.
+func (ix *Index) Has(k uint32, m uint32) bool {
+	b := ix.Domain.Bit(m)
+	return ix.Table.Get(k).Has(b)
 }
 
 // Any returns all keys that match any of the passed members.
@@ -329,6 +366,77 @@ func (ix *Index) NotAll(ms ...uint32) ([]uint32, error) {
 	return keys, nil
 }
 
+func (ix *Index) Query(any, all, nany, nall []uint32) ([]uint32, error) {
+	var (
+		err  error
+		set  Uint32Set
+		tmp  = make(Uint32Set)
+		keys []uint32
+	)
+
+	if any != nil {
+		if keys, err = ix.Any(any...); err != nil {
+			return nil, fmt.Errorf("Operation failed (any): %s\n", err)
+		}
+
+		if set == nil {
+			set = make(Uint32Set, len(keys))
+			set.Add(keys...)
+		} else {
+			tmp.Add(keys...)
+			set = set.Intersect(tmp)
+			tmp.Clear()
+		}
+	}
+
+	if all != nil {
+		if keys, err = ix.All(all...); err != nil {
+			return nil, fmt.Errorf("Operation failed (all): %s\n", err)
+		}
+
+		if set == nil {
+			set = make(Uint32Set, len(keys))
+			set.Add(keys...)
+		} else {
+			tmp.Add(keys...)
+			set = set.Intersect(tmp)
+			tmp.Clear()
+		}
+	}
+
+	if nany != nil {
+		if keys, err = ix.NotAny(nany...); err != nil {
+			return nil, fmt.Errorf("Operation failed (nany): %s\n", err)
+		}
+
+		if set == nil {
+			set = make(Uint32Set, len(keys))
+			set.Add(keys...)
+		} else {
+			tmp.Add(keys...)
+			set = set.Intersect(tmp)
+			tmp.Clear()
+		}
+	}
+
+	if nall != nil {
+		if keys, err = ix.NotAll(nall...); err != nil {
+			return nil, fmt.Errorf("Operation failed (nall): %s\n", err)
+		}
+
+		if set == nil {
+			set = make(Uint32Set, len(keys))
+			set.Add(keys...)
+		} else {
+			tmp.Add(keys...)
+			set = set.Intersect(tmp)
+			tmp.Clear()
+		}
+	}
+
+	return set.Items(), nil
+}
+
 // Sparsity returns the proportion of bits being represented in the domain
 // to the bytes being allocated in the index.
 func (ix *Index) Sparsity() float32 {
@@ -338,13 +446,9 @@ func (ix *Index) Sparsity() float32 {
 }
 
 // NewIndex initializes a new index.
-func NewIndex(d *Domain) *Index {
-	if d == nil {
-		d = NewDomain(nil)
-	}
-
+func NewIndex(d []uint32) *Index {
 	return &Index{
-		Domain: d,
+		Domain: NewDomain(d),
 		Table:  make(Table),
 	}
 }
