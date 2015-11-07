@@ -103,6 +103,7 @@ var queryCmd = &cobra.Command{
 		}
 
 		cmd.Printf("Time: %s\n", time.Now().Sub(t0))
+		cmd.Printf("Count: %d\n", len(res))
 
 		for _, k := range res {
 			fmt.Println(k)
