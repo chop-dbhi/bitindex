@@ -105,8 +105,10 @@ var queryCmd = &cobra.Command{
 		cmd.Printf("Time: %s\n", time.Now().Sub(t0))
 		cmd.Printf("Count: %d\n", len(res))
 
-		for _, k := range res {
-			fmt.Println(k)
+		if !viper.GetBool("query.quiet") {
+			for _, k := range res {
+				fmt.Println(k)
+			}
 		}
 	},
 }
@@ -114,11 +116,13 @@ var queryCmd = &cobra.Command{
 func init() {
 	flags := queryCmd.Flags()
 
+	flags.Bool("quiet", false, "Do not print keys to stdout.")
 	flags.String("any", "", "Applies the any operation.")
 	flags.String("all", "", "Applies the all operation.")
 	flags.String("nany", "", "Applies the not any operation.")
 	flags.String("nall", "", "Applies the not all operation.")
 
+	viper.BindPFlag("query.quiet", flags.Lookup("quiet"))
 	viper.BindPFlag("query.any", flags.Lookup("any"))
 	viper.BindPFlag("query.all", flags.Lookup("all"))
 	viper.BindPFlag("query.nany", flags.Lookup("nany"))
