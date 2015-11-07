@@ -107,18 +107,12 @@ var buildCmd = &cobra.Command{
 
 		t0 := time.Now()
 		idx, err := ixer.Index()
-		dur := time.Now().Sub(t0)
+		bt := time.Now().Sub(t0)
 
 		if err != nil {
 			cmd.Printf("Error building index: %s\n", err)
 			os.Exit(1)
 		}
-
-		cmd.Println("Build time:", dur)
-		cmd.Println("Statistics:")
-		cmd.Println("* Domain size:", idx.Domain.Size())
-		cmd.Println("* Table size:", idx.Table.Size())
-		cmd.Println("* Sparsity:", idx.Sparsity()*100)
 
 		output := viper.GetString("build.output")
 
@@ -138,10 +132,14 @@ var buildCmd = &cobra.Command{
 			w = o
 		}
 
+		t0 = time.Now()
+
 		if err := bitindex.DumpIndex(w, idx); err != nil {
 			cmd.Println("Error dumping index:", err)
 			os.Exit(1)
 		}
+
+		wt := time.Now().Sub(t0)
 
 		// Coerce to file, sync and close.
 		if f, ok := w.(*os.File); ok {
@@ -153,6 +151,12 @@ var buildCmd = &cobra.Command{
 				cmd.Printf("Error closing file: %s\n", err)
 			}
 		}
+
+		cmd.Println("Build time:", bt)
+		cmd.Println("Write time:", wt)
+		cmd.Println("Domain size:", idx.Domain.Size())
+		cmd.Println("Table size:", idx.Table.Size())
+		cmd.Println("Sparsity:", idx.Sparsity()*100)
 	},
 }
 
