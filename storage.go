@@ -1,6 +1,7 @@
 package bitindex
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/binary"
 	"fmt"
@@ -128,9 +129,13 @@ func dumpIndex(w io.Writer, idx *Index) error {
 
 // DumpIndex writes an Index to it binary representation.
 func DumpIndex(w io.Writer, idx *Index) error {
-	if err := dumpIndex(w, idx); err != nil {
+	bw := bufio.NewWriter(w)
+
+	if err := dumpIndex(bw, idx); err != nil {
 		return err
 	}
+
+	bw.Flush()
 
 	return nil
 }
