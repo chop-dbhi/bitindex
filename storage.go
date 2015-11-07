@@ -1,9 +1,11 @@
 package bitindex
 
 import (
+	"bytes"
 	"encoding/binary"
 	"fmt"
 	"io"
+	"io/ioutil"
 )
 
 // Resets the buffer
@@ -297,6 +299,15 @@ func LoadIndex(r io.Reader) (*Index, error) {
 		t   Table
 		err error
 	)
+
+	// Read everything in memory.
+	ab, err := ioutil.ReadAll(r)
+
+	if err != nil {
+		return nil, err
+	}
+
+	r = bytes.NewReader(ab)
 
 	b := make([]byte, 4, 4)
 
