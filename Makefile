@@ -31,6 +31,10 @@ test:
 	go test -v -cover -bench . -benchmem .
 
 
+docker: dist
+	docker build -t dbhi/bitindex .
+
+
 # Generate PDFs for the profiling output
 prof:
 	go tool pprof -pdf `which bitindex` prof/cpu.pprof > prof/cpu.pdf

@@ -173,3 +173,15 @@ curl -X POST 127.0.0.0:7000/query -d '{"any": [1, 2]}'
 ## Formats
 
 Currently, the only supported format is CSV.
+
+## Deployment
+
+### Docker
+
+The Dockerfile defaults to running the HTTP service. The volume is required if the image is used as is.
+
+```bash
+docker run -v /path/to/data.bitx:/data.bitx -p 7000:7000 -d dbhi/bitindex
+```
+
+An alternate method would be to extend the image and copy the index into the image itself.

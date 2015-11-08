@@ -1,5 +1,6 @@
 *.sw?
-prof/
 *.bitx
 *.csv
 *.csv.*
+prof/
+dist/
