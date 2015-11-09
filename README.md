@@ -153,21 +153,30 @@ Domain
 
 ```sh
 curl 127.0.0.1:7000/domain
-[1, 2, 3, 4]
+{
+    "complement": false,
+    "items": [1, 2, 3, 4]
+}
 ```
 
 Keys
 
 ```sh
 curl 127.0.0.1:7000/keys
-[100, 101, 102]
+{
+    "complement": false,
+    "item": [100, 101, 102]
+}
 ```
 
 Query
 
 ```sh
 curl -X POST 127.0.0.0:7000/query -d '{"any": [1, 2]}'
-[100, 102]
+{
+    "complement": false,
+    "items": [100, 102]
+}
 ```
 
 ## Formats
