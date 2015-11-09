@@ -102,11 +102,26 @@ var queryCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
+		var (
+			comp  bool
+			items []uint32
+		)
+
+		thres := viper.GetFloat64("main.smallest-threshold")
+
+		if viper.GetBool("query.complement") || viper.GetBool("query.smallest") && !res.Smallest(float32(thres)) {
+			comp = true
+			items = res.Complement()
+		} else {
+			items = res.Items()
+		}
+
 		cmd.Printf("Time: %s\n", time.Now().Sub(t0))
-		cmd.Printf("Count: %d\n", len(res))
+		cmd.Printf("Count: %d\n", len(items))
+		cmd.Printf("Complement: %v\n", comp)
 
 		if !viper.GetBool("query.quiet") {
-			for _, k := range res {
+			for _, k := range items {
 				fmt.Println(k)
 			}
 		}
@@ -121,10 +136,14 @@ func init() {
 	flags.String("all", "", "Applies the all operation.")
 	flags.String("nany", "", "Applies the not any operation.")
 	flags.String("nall", "", "Applies the not all operation.")
+	flags.Bool("smallest", false, "Returns the complement of the set if smaller.")
+	flags.Bool("complement", false, "Returns the complement of the set.")
 
 	viper.BindPFlag("query.quiet", flags.Lookup("quiet"))
 	viper.BindPFlag("query.any", flags.Lookup("any"))
 	viper.BindPFlag("query.all", flags.Lookup("all"))
 	viper.BindPFlag("query.nany", flags.Lookup("nany"))
 	viper.BindPFlag("query.nall", flags.Lookup("nall"))
+	viper.BindPFlag("query.smallest", flags.Lookup("smallest"))
+	viper.BindPFlag("query.complement", flags.Lookup("complement"))
 }

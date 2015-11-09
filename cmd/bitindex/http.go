@@ -14,10 +14,11 @@ import (
 const StatusUnprocessableEntity = 422
 
 type query struct {
-	Any  []uint32
-	Nany []uint32
-	All  []uint32
-	Nall []uint32
+	Any      []uint32
+	Nany     []uint32
+	All      []uint32
+	Nall     []uint32
+	Smallest bool
 }
 
 var httpCmd = &cobra.Command{
@@ -81,7 +82,33 @@ var httpCmd = &cobra.Command{
 				return
 			}
 
-			if err = json.NewEncoder(w).Encode(res); err != nil {
+			var (
+				smallest   bool
+				complement bool
+				items      []uint32
+			)
+
+			if q.Smallest {
+				smallest = true
+			} else if r.URL.Query().Get("smallest") != "" {
+				smallest = true
+			}
+
+			var thres = viper.GetFloat64("main.smallest-threshold")
+
+			if smallest && !res.Smallest(float32(thres)) {
+				items = res.Complement()
+				complement = true
+			} else {
+				items = res.Items()
+			}
+
+			resp := map[string]interface{}{
+				"items":      items,
+				"complement": complement,
+			}
+
+			if err = json.NewEncoder(w).Encode(resp); err != nil {
 				w.WriteHeader(http.StatusInternalServerError)
 				fmt.Fprint(w, err)
 				return

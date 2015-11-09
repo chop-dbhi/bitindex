@@ -366,7 +366,7 @@ func (ix *Index) NotAll(ms ...uint32) ([]uint32, error) {
 	return keys, nil
 }
 
-func (ix *Index) Query(any, all, nany, nall []uint32) ([]uint32, error) {
+func (ix *Index) Query(any, all, nany, nall []uint32) (*Result, error) {
 	var (
 		err  error
 		set  Uint32Set
@@ -434,7 +434,10 @@ func (ix *Index) Query(any, all, nany, nall []uint32) ([]uint32, error) {
 		}
 	}
 
-	return set.Items(), nil
+	return &Result{
+		set: set,
+		idx: ix,
+	}, nil
 }
 
 // Sparsity returns the proportion of bits being represented in the domain
@@ -457,4 +460,35 @@ func NewIndex(d []uint32) *Index {
 // from a source.
 type Indexer interface {
 	Index() (*Index, error)
+}
+
+type Result struct {
+	set Uint32Set
+	idx *Index
+}
+
+func (r *Result) Items() []uint32 {
+	return r.set.Items()
+}
+
+func (r *Result) Len() int {
+	return r.set.Len()
+}
+
+func (r *Result) Smallest(thres float32) bool {
+	return float32(r.Len())/float32(len(r.idx.Table)) < thres
+}
+
+func (r *Result) Complement() []uint32 {
+	items := make([]uint32, len(r.idx.Table)-r.set.Len())
+	i := 0
+
+	for k, _ := range r.idx.Table {
+		if !r.set.Contains(k) {
+			items[i] = k
+			i++
+		}
+	}
+
+	return items
 }

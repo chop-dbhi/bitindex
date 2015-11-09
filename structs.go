@@ -28,6 +28,15 @@ func (s Uint32Set) Items() []uint32 {
 	return a
 }
 
+func (s Uint32Set) Len() int {
+	return len(s)
+}
+
+func (s Uint32Set) Contains(i uint32) bool {
+	_, ok := s[i]
+	return ok
+}
+
 func (s Uint32Set) Add(is ...uint32) {
 	for _, i := range is {
 		s[i] = struct{}{}

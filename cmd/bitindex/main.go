@@ -17,9 +17,11 @@ func init() {
 
 	flags.Bool("prof", false, "Enable profiling.")
 	flags.String("prof-path", "./prof", "The path to store output profiles.")
+	flags.Float32("smallest-threshold", 0.6, "The ratio of the set size for the complement to be returned.")
 
 	viper.BindPFlag("main.prof", flags.Lookup("prof"))
 	viper.BindPFlag("main.prof-path", flags.Lookup("prof-path"))
+	viper.BindPFlag("main.smallest-threshold", flags.Lookup("smallest-threshold"))
 }
 
 func main() {
