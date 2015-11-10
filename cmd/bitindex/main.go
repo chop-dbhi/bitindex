@@ -25,6 +25,7 @@ func init() {
 }
 
 func main() {
+	mainCmd.AddCommand(versionCmd)
 	mainCmd.AddCommand(buildCmd)
 	mainCmd.AddCommand(domainCmd)
 	mainCmd.AddCommand(keysCmd)
