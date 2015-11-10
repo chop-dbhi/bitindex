@@ -19,10 +19,10 @@ func clearBuffer(s []byte) {
 func writeInt(w io.Writer, b []byte, i int) error {
 	binary.PutUvarint(b, uint64(i))
 
-	if n, err := w.Write(b[:4]); err != nil {
+	if n, err := w.Write(b); err != nil {
 		return err
-	} else if n != 4 {
-		return fmt.Errorf("Expected to write 4 bytes, wrote %d", n)
+	} else if n != binary.MaxVarintLen32 {
+		return fmt.Errorf("Expected to write 5 bytes, wrote %d", n)
 	}
 
 	return nil
@@ -31,22 +31,22 @@ func writeInt(w io.Writer, b []byte, i int) error {
 func writeUint32(w io.Writer, b []byte, i uint32) error {
 	binary.PutUvarint(b, uint64(i))
 
-	if n, err := w.Write(b[:4]); err != nil {
+	if n, err := w.Write(b); err != nil {
 		return err
-	} else if n != 4 {
-		return fmt.Errorf("Expected to write 4 bytes, wrote %d", n)
+	} else if n != binary.MaxVarintLen32 {
+		return fmt.Errorf("Expected to write 5 bytes, wrote %d", n)
 	}
 
 	return nil
 }
 
 func dumpDomain(w io.Writer, d *Domain, b []byte) error {
-	// Length of the domain. 4 bytes.
+	// Length of the domain. 5 bytes.
 	if err := writeInt(w, b, d.Size()); err != nil {
 		return fmt.Errorf("Error writing domain length: %s", err)
 	}
 
-	// Domain members. 4 bytes each.
+	// Domain members. 5 bytes each.
 	for _, n := range d.Members() {
 		clearBuffer(b)
 
@@ -61,7 +61,7 @@ func dumpDomain(w io.Writer, d *Domain, b []byte) error {
 func dumpArray(w io.Writer, a Array, b []byte) error {
 	clearBuffer(b)
 
-	// Array length. 4 bytes.
+	// Array length. 5 bytes.
 	if err := writeInt(w, b, len(a)); err != nil {
 		return fmt.Errorf("Error writing array length: %s", err)
 	}
@@ -90,7 +90,7 @@ func dumpArray(w io.Writer, a Array, b []byte) error {
 func dumpTable(w io.Writer, t Table, b []byte) error {
 	clearBuffer(b)
 
-	// Length of the table. 4 bytes.
+	// Length of the table. 5 bytes.
 	if err := writeInt(w, b, t.Size()); err != nil {
 		return fmt.Errorf("Error writing table length: %s", err)
 	}
@@ -99,7 +99,7 @@ func dumpTable(w io.Writer, t Table, b []byte) error {
 	for k, a := range t {
 		clearBuffer(b)
 
-		// Entry key. 4 bytes.
+		// Entry key. 5 bytes.
 		if err := writeUint32(w, b, k); err != nil {
 			return fmt.Errorf("Error writing array key: %s", err)
 		}
@@ -113,8 +113,8 @@ func dumpTable(w io.Writer, t Table, b []byte) error {
 }
 
 func dumpIndex(w io.Writer, idx *Index) error {
-	// Shared buffer. Nothing exceeds 4 bytes.
-	b := make([]byte, 4, 4)
+	// Shared buffer. Nothing exceeds 5 bytes.
+	b := make([]byte, binary.MaxVarintLen32, binary.MaxVarintLen32)
 
 	if err := dumpDomain(w, idx.Domain, b); err != nil {
 		return err
@@ -141,13 +141,13 @@ func DumpIndex(w io.Writer, idx *Index) error {
 }
 
 func readUint32(r io.Reader, b []byte) (uint32, error) {
-	if len(b) != 4 {
-		panic("need 4 bytes")
+	if len(b) != binary.MaxVarintLen32 {
+		panic("need 5 bytes")
 	}
-	if n, err := r.Read(b[:4]); err != nil {
+	if n, err := r.Read(b); err != nil {
 		return 0, err
-	} else if n != 4 {
-		return 0, fmt.Errorf("Expected to read 4 bytes; read %d", n)
+	} else if n != binary.MaxVarintLen32 {
+		return 0, fmt.Errorf("Expected to read 5 bytes; read %d", n)
 	}
 
 	val, ierr := binary.Uvarint(b)
@@ -160,10 +160,10 @@ func readUint32(r io.Reader, b []byte) (uint32, error) {
 }
 
 func readInt(r io.Reader, b []byte) (int, error) {
-	if n, err := r.Read(b[:4]); err != nil {
+	if n, err := r.Read(b); err != nil {
 		return 0, err
-	} else if n != 4 {
-		return 0, fmt.Errorf("Expected to read 4 bytes; read %d", n)
+	} else if n != binary.MaxVarintLen32 {
+		return 0, fmt.Errorf("Expected to read 5 bytes; read %d", n)
 	}
 
 	val, ierr := binary.Uvarint(b)
@@ -226,7 +226,7 @@ func readDomain(r io.Reader, b []byte) (*Domain, error) {
 	// Initialize array for members.
 	ms := make([]uint32, n)
 
-	// Domain members are encoded as an array of 4 bytes
+	// Domain members are encoded as an array of 5 bytes
 	for i := 0; i < n; i++ {
 		if m, err = readUint32(r, b); err != nil {
 			return nil, fmt.Errorf("Error decoding domain member at %d: %s", i, err)
@@ -288,7 +288,7 @@ func LoadDomain(r io.Reader) (*Domain, error) {
 		err error
 	)
 
-	b := make([]byte, 4, 4)
+	b := make([]byte, binary.MaxVarintLen32, binary.MaxVarintLen32)
 
 	if d, err = readDomain(r, b); err != nil {
 		return nil, err
@@ -314,7 +314,7 @@ func LoadIndex(r io.Reader) (*Index, error) {
 
 	r = bytes.NewReader(ab)
 
-	b := make([]byte, 4, 4)
+	b := make([]byte, binary.MaxVarintLen32, binary.MaxVarintLen32)
 
 	if d, err = readDomain(r, b); err != nil {
 		return nil, err
